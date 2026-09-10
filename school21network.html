@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>School 21 Network</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #f1f5f9;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #334155;
+        }
+        .header h1 { font-size: 24px; font-weight: 800; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .search-box {
+            width: 100%;
+            padding: 12px 16px;
+            margin-top: 12px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            outline: none;
+        }
+        .search-box:focus { border-color: #38bdf8; }
+        .container { padding: 16px; max-width: 600px; margin: 0 auto; }
+        .card {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #334155;
+            transition: transform 0.2s;
+        }
+        .card:active { transform: scale(0.98); }
+        .card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; }
+        .name { font-size: 20px; font-weight: 700; color: #f8fafc; }
+        .tg-btn {
+            background: #0ea5e9;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .bio { color: #94a3b8; margin-bottom: 12px; line-height: 1.5; }
+        .skills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+        .skill {
+            background: rgba(56, 189, 248, 0.1);
+            color: #38bdf8;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .project {
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid #818cf8;
+            margin-bottom: 8px;
+        }
+        .project-title { font-weight: 600; color: #c4b5fd; font-size: 14px; }
+        .looking { font-size: 13px; color: #fbbf24; display: flex; align-items: center; gap: 6px; }
+        .add-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(56, 189, 248, 0.4);
+            z-index: 200;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: #1e293b;
+            border-radius: 20px;
+            padding: 24px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #94a3b8; font-size: 14px; }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+        }
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .empty { text-align: center; color: #64748b; padding: 40px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎓 School 21 Network</h1>
+        <input type="text" class="search-box" id="search" placeholder="Ko'nikma bo'yicha qidirish (masalan: Python)..." oninput="filterProfiles()">
+    </div>
+
+    <div class="container" id="profiles-list">
+        <div class="empty">Yuklanmoqda...</div>
+    </div>
+
+    <button class="add-btn" onclick="openModal()">+</button>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 20px;">Profil yaratish</h2>
+            <div class="form-group">
+                <label>Ism Familiya</label>
+                <input type="text" id="name" placeholder="Azizbek Karimov">
+            </div>
+            <div class="form-group">
+                <label>O'zingiz haqingizda</label>
+                <textarea id="bio" rows="2" placeholder="Qisqacha..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Ko'nikmalar (vergul bilan)</label>
+                <input type="text" id="skills" placeholder="Python, React, SQL">
+            </div>
+            <div class="form-group">
+                <label>Loyihangiz</label>
+                <input type="text" id="project" placeholder="To'lov tizimi">
+            </div>
+            <div class="form-group">
+                <label>Kimni qidiryapsiz?</label>
+                <input type="text" id="looking" placeholder="Frontend hamkor">
+            </div>
+            <button class="submit-btn" onclick="saveProfile()">Saqlash</button>
+        </div>
+    </div>
+
+    <script>
+        // Supabase sozlamalari (O'zingiznikiga almashtiring!)
+        const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+        const SUPABASE_KEY = 'YOUR_ANON_KEY';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Telegram Web App
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.MainButton.setText("Yopish").show().onClick(() => tg.close());
+
+        let allProfiles = [];
+
+        async function loadProfiles() {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error(error);
+                document.getElementById('profiles-list').innerHTML = '<div class="empty">Xatolik yuz berdi</div>';
+                return;
+            }
+
+            allProfiles = data || [];
+            renderProfiles(allProfiles);
+        }
+
+        function renderProfiles(profiles) {
+            const container = document.getElementById('profiles-list');
+            if (profiles.length === 0) {
+                container.innerHTML = '<div class="empty">Hozircha profillar yo\'q. Birinchi bo\'lib profilingizni yarating!</div>';
+                return;
+            }
+
+            container.innerHTML = profiles.map(p => `
+                <div class="card">
+                    <div class="card-header">
+                        <div class="name">${p.name}</div>
+                        ${p.telegram ? `<a href="https://t.me/${p.telegram.replace('@','')}" class="tg-btn">Bog'lanish</a>` : ''}
+                    </div>
+                    <div class="bio">${p.bio || ''}</div>
+                    <div class="skills">
+                        ${(p.skills || []).map(s => `<span class="skill">${s}</span>`).join('')}
+                    </div>
+                    ${p.project ? `<div class="project"><div class="project-title">🚀 ${p.project}</div></div>` : ''}
+                    ${p.looking_for ? `<div class="looking">👤 Qidiradi: ${p.looking_for}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function filterProfiles() {
+            const query = document.getElementById('search').value.toLowerCase();
+            const filtered = allProfiles.filter(p =>
+                p.name.toLowerCase().includes(query) ||
+                (p.skills || []).some(s => s.toLowerCase().includes(query)) ||
+                (p.project || '').toLowerCase().includes(query)
+            );
+            renderProfiles(filtered);
+        }
+
+        function openModal() {
+            // Telegram username avtomatik olish
+            const tgUser = tg.initDataUnsafe?.user;
+            if (tgUser && !document.getElementById('name').value) {
+                document.getElementById('name').value = tgUser.first_name + ' ' + (tgUser.last_name || '');
+            }
+            document.getElementById('modal').classList.add('active');
+        }
+
+        async function saveProfile() {
+            const name = document.getElementById('name').value;
+            const bio = document.getElementById('bio').value;
+            const skills = document.getElementById('skills').value.split(',').map(s => s.trim()).filter(s => s);
+            const project = document.getElementById('project').value;
+            const looking = document.getElementById('looking').value;
+
+            // Telegram username avtomatik
+            const tgUser = tg.initDataUnsafe?.user;
+            const telegram = tgUser ? '@' + tgUser.username : null;
+
+            if (!name) {
+                tg.showAlert('Ism kiritish shart!');
+                return;
+            }
+
+            const { error } = await supabase
+                .from('profiles')
+                .insert([{ name, bio, skills, project, looking_for: looking, telegram }]);
+
+            if (error) {
+                tg.showAlert('Xatolik: ' + error.message);
+            } else {
+                tg.showAlert('Profil saqlandi!');
+                document.getElementById('modal').classList.remove('active');
+                loadProfiles(); // Ro'yxatni yangilash
+                // Formani tozalash
+                document.getElementById('name').value = '';
+                document.getElementById('bio').value = '';
+                document.getElementById('skills').value = '';
+                document.getElementById('project').value = '';
+                document.getElementById('looking').value = '';
+            }
+        }
+
+        // Yuklash
+        loadProfiles();
+    </script>
+</body>
+</html>
