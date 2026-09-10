@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>School 21 Network</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -175,45 +176,38 @@
     </div>
 
     <script>
+        // ============================================
+        // FAQAT SHU IKKI QATORNI O'ZGARTIRING!
+        // ============================================
+        const SUPABASE_URL = 'https://mqjhloztltjrdympghwd.supabase.co';  // ← 1-QATOR: O'zingizning URL qo'ying
+        const SUPABASE_KEY = 'sb_publishable_Am4_V_GQ-yXeh0wBeLar7g_sLIh9INc';                     // ← 2-QATOR: O'zingizning KEY qo'ying
+        // ============================================
+        // BOSHQA HECH NARSAGA TEGMANG!
+        // ============================================
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         // Telegram Web App
         const tg = window.Telegram.WebApp;
         tg.expand();
+        tg.MainButton.setText("Yopish").show().onClick(() => tg.close());
 
-        // LocalStorage'dan ma'lumot olish
-        let allProfiles = JSON.parse(localStorage.getItem('s21_profiles') || '[]');
+        let allProfiles = [];
 
-        // Agar bo'sh bo'lsa, test ma'lumotlar qo'shish
-        if (allProfiles.length === 0) {
-            allProfiles = [
-                {
-                    id: 1,
-                    name: "Azizbek Karimov",
-                    bio: "Backend developer, fintech yo'nalishida",
-                    skills: ["Python", "FastAPI", "PostgreSQL"],
-                    telegram: "@azizbek",
-                    project: "To'lov tizimi",
-                    looking_for: "Frontend hamkor"
-                },
-                {
-                    id: 2,
-                    name: "Diyora Rahimova",
-                    bio: "Mobile developer",
-                    skills: ["Flutter", "Dart", "Firebase"],
-                    telegram: "@diyora",
-                    project: "Delivery app",
-                    looking_for: "Backendchi"
-                },
-                {
-                    id: 3,
-                    name: "Jasur Toshpo'latov",
-                    bio: "AI/ML enthusiast",
-                    skills: ["Python", "TensorFlow", "Pandas"],
-                    telegram: "@jasur",
-                    project: "Image classifier",
-                    looking_for: "Data engineer"
-                }
-            ];
-            localStorage.setItem('s21_profiles', JSON.stringify(allProfiles));
+        async function loadProfiles() {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error(error);
+                document.getElementById('profiles-list').innerHTML = '<div class="empty">Xatolik yuz berdi</div>';
+                return;
+            }
+
+            allProfiles = data || [];
+            renderProfiles(allProfiles);
         }
 
         function renderProfiles(profiles) {
@@ -257,7 +251,7 @@
             document.getElementById('modal').classList.add('active');
         }
 
-        function saveProfile() {
+        async function saveProfile() {
             const name = document.getElementById('name').value;
             const bio = document.getElementById('bio').value;
             const skills = document.getElementById('skills').value.split(',').map(s => s.trim()).filter(s => s);
@@ -268,37 +262,29 @@
             const telegram = tgUser ? '@' + tgUser.username : null;
 
             if (!name) {
-                alert('Ism kiritish shart!');
+                tg.showAlert('Ism kiritish shart!');
                 return;
             }
 
-            const newProfile = {
-                id: Date.now(),
-                name,
-                bio,
-                skills,
-                telegram,
-                project,
-                looking_for: looking
-            };
+            const { error } = await supabase
+                .from('profiles')
+                .insert([{ name, bio, skills, project, looking_for: looking, telegram }]);
 
-            allProfiles.unshift(newProfile);
-            localStorage.setItem('s21_profiles', JSON.stringify(allProfiles));
-
-            alert('Profil saqlandi!');
-            document.getElementById('modal').classList.remove('active');
-            renderProfiles(allProfiles);
-
-            // Formani tozalash
-            document.getElementById('name').value = '';
-            document.getElementById('bio').value = '';
-            document.getElementById('skills').value = '';
-            document.getElementById('project').value = '';
-            document.getElementById('looking').value = '';
+            if (error) {
+                tg.showAlert('Xatolik: ' + error.message);
+            } else {
+                tg.showAlert('Profil saqlandi!');
+                document.getElementById('modal').classList.remove('active');
+                loadProfiles();
+                document.getElementById('name').value = '';
+                document.getElementById('bio').value = '';
+                document.getElementById('skills').value = '';
+                document.getElementById('project').value = '';
+                document.getElementById('looking').value = '';
+            }
         }
 
-        // Yuklash
-        renderProfiles(allProfiles);
+        loadProfiles();
     </script>
 </body>
 </html>
